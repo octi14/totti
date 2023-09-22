@@ -1,0 +1,12 @@
+{
+  "name": "totti",
+  "version": "1.0.0",
+  "description": "Descripción de tu proyecto",
+  "dependencies": {
+    "bootstrap-vue": "^2.23.1",
+    "nuxt": "^2.15.3"
+  },
+  "scripts": {
+    "dev": "nuxt"
+  }
+}
