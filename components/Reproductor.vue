@@ -15,13 +15,13 @@
             <!-- Spinner aquí -->
             <!-- Puedes personalizar el spinner aquí con HTML o utilizar una librería de iconos -->
             <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
             </svg>
           </div>
           <div class="flex items-center space-x-2" v-else>
             <button @click="togglePlayPause">
               <svg v-if="!playing" class="w-8 h-8 text-gray-600 hover:text-white transition-transform transform hover:scale-110" fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M5 4.536v10.928a.5.5 0 0 0 .822.384l7.975-5.464a.5.5 0 0 0 0-.848l-7.975-5.464A.5.5 0 0 0 5 4.536z"/></svg>
-              <svg v-else class="w-8 h-8 text-gray-500 hover:text-white transition-transform transform hover:scale-110" fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M3 2a1 1 0 0 1 1 1v14a1 1 0 0 1-2 0V3a1 1 0 0 1 1-1zm13 0a1 1 0 0 1 1 1v14a1 1 0 0 1-2 0V3a1 1 0 0 1 1-1z"/></svg>
+              <svg v-else class="w-5 h-8 text-gray-500 hover:text-white transition-transform transform hover:scale-110" fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M3 2a1 1 0 0 1 1 1v14a1 1 0 0 1-2 0V3a1 1 0 0 1 1-1zm13 0a1 1 0 0 1 1 1v14a1 1 0 0 1-2 0V3a1 1 0 0 1 1-1z"/></svg>
             </button>
             <input
               type="range"
@@ -121,6 +121,13 @@ export default {
 </script>
 
 <style scoped>
+@font-face {
+  font-family: 'Montserrat';
+  src: url('~/assets/fonts/Montserrat-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+
 .audio-player {
   background-position: center;
   background-repeat: no-repeat;
@@ -154,7 +161,13 @@ export default {
   color: #ffffff;
 }
 
+h1{
+  font-family: 'Montserrat', sans-serif;
+  font-weight: bold;
+}
+
 .details{
-  text-shadow: rgba(0, 0, 0, 0.854);
+  text-shadow: 1px 1px #0000006d;
+  /* font-family: 'Montserrat', sans-serif; */
 }
 </style>
