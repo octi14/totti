@@ -37,6 +37,11 @@ export default {
     'bootstrap-vue/nuxt',
   ],
 
+  serverMiddleware: [
+    { path: '/api/s3/albums', handler: '~/server/api/s3.js' },
+    { path: '/api/s3/manage', handler: '~/server/api/s3-manage.js' },
+  ],
+
   // // BootstrapVue module configuration https://bootstrap-vue.org/docs#nuxtjs-module
   // bootstrapVue: {
   //   bootstrapCSS: false, // Or `css: false`

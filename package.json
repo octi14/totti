@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "description": "Descripción de tu proyecto",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.931.0",
+    "@aws-sdk/s3-request-presigner": "^3.931.0",
     "bootstrap-vue": "^2.23.1",
     "nuxt": "^2.15.3"
   },

@@ -67,3 +67,14 @@ More information about the usage of this directory in [the documentation](https:
 This directory contains your Vuex store files. Creating a file in this directory automatically activates Vuex.
 
 More information about the usage of this directory in [the documentation](https://nuxtjs.org/docs/2.x/directory-structure/store).
+
+## Configuración de S3
+
+Para que la app cargue tus álbumes directamente desde Amazon S3 necesitas definir las siguientes variables de entorno antes de ejecutar `npm run dev`:
+
+- `S3_BUCKET_NAME`: nombre del bucket que contiene tus álbumes.
+- `AWS_REGION`: región del bucket (por defecto se usa `us-east-2`).
+- `AWS_ACCESS_KEY_ID` y `AWS_SECRET_ACCESS_KEY`: credenciales con permisos de lectura sobre el bucket.
+- `S3_SIGNED_URL_TTL` (opcional): vigencia en segundos de los enlaces firmados que se generan para los MP3 y las portadas (por defecto 3600).
+
+Crea un archivo `.env` en la raíz del proyecto o exporta las variables en tu shell antes de arrancar Nuxt. Recuerda que las credenciales no deben subirse al repositorio.
