@@ -4,6 +4,7 @@ const {
   CopyObjectCommand,
   PutObjectCommand,
   HeadObjectCommand,
+  GetObjectCommand,
 } = require('@aws-sdk/client-s3');
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 
@@ -15,6 +16,7 @@ const BUCKET =
   '';
 const REGION = process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION || 'us-east-2';
 const UPLOAD_SIGNED_URL_TTL = Number(process.env.S3_UPLOAD_SIGNED_URL_TTL || 900);
+const DOWNLOAD_SIGNED_URL_TTL = Number(process.env.S3_DOWNLOAD_SIGNED_URL_TTL || 3600);
 
 let s3Client;
 
@@ -148,6 +150,68 @@ module.exports = async function s3ManageHandler(req, res) {
         send(res, 200, { renamed: true, sourceKey, targetKey });
         return;
       }
+      case 'createDownloadUrl': {
+        const key = validateKey(body.key);
+        await ensureObjectExists(key);
+        const command = new GetObjectCommand({
+          Bucket: BUCKET,
+          Key: key,
+        });
+        const url = await getSignedUrl(client, command, { expiresIn: DOWNLOAD_SIGNED_URL_TTL });
+        send(res, 200, { url, key, expiresIn: DOWNLOAD_SIGNED_URL_TTL });
+        return;
+      }
+      case 'createFolder': {
+        const folderName = body.folderName || '';
+        if (!folderName || typeof folderName !== 'string') {
+          send(res, 400, { error: 'folderName es obligatorio' });
+          return;
+        }
+        // Sanitizar el nombre de la carpeta
+        const sanitized = folderName
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-zA-Z0-9-_]/g, '-')
+          .replace(/-+/g, '-')
+          .replace(/^-|-$/g, '')
+          .toLowerCase();
+        if (!sanitized) {
+          send(res, 400, { error: 'Nombre de carpeta inválido' });
+          return;
+        }
+        // Crear un prefijo (carpeta) en S3 creando un objeto placeholder
+        const folderKey = `${sanitized}/.gitkeep`;
+        try {
+          // Verificar si ya existe
+          try {
+            await client.send(
+              new HeadObjectCommand({
+                Bucket: BUCKET,
+                Key: folderKey,
+              })
+            );
+            send(res, 400, { error: 'La carpeta ya existe' });
+            return;
+          } catch (headError) {
+            // Si no existe, continuar
+          }
+          // Crear el objeto placeholder para la carpeta
+          await client.send(
+            new PutObjectCommand({
+              Bucket: BUCKET,
+              Key: folderKey,
+              ContentType: 'text/plain',
+              Body: '',
+            })
+          );
+          send(res, 200, { created: true, folderName: sanitized, prefix: `${sanitized}/` });
+          return;
+        } catch (error) {
+          console.error('[S3] Error creando carpeta:', error);
+          send(res, 500, { error: 'No se pudo crear la carpeta' });
+          return;
+        }
+      }
       default:
         send(res, 400, { error: 'Acción no soportada' });
     }
@@ -156,4 +220,5 @@ module.exports = async function s3ManageHandler(req, res) {
     send(res, 500, { error: error.message || 'Error interno' });
   }
 };
+
 

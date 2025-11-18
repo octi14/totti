@@ -9,7 +9,12 @@
           <p>totti player</p>
         </div>
         <div class="sidebar-section">
-          <p class="sidebar-title">Colección</p>
+          <div class="sidebar-header">
+            <p class="sidebar-title">Colección</p>
+            <button class="icon-mini" title="Crear nueva carpeta" @click="createNewFolder">
+              <span class="material-icon tiny">create_new_folder</span>
+            </button>
+          </div>
           <div class="sidebar-list">
             <button
               v-for="album in albums"
@@ -111,10 +116,6 @@
                   <span class="material-icon small">volume_up</span>
                   <input type="range" min="0" max="1" step="0.01" v-model.number="volume" @input="updateVolume">
                 </div>
-                <button class="pill-button" @click="shuffleArtworks">
-                  <span class="material-icon tiny">autorenew</span>
-                  Cambiar visual
-                </button>
               </div>
             </div>
           </div>
@@ -150,6 +151,9 @@
             </div>
             <span class="track-duration">{{ formatDurationDisplay(track.duration) }}</span>
             <div class="track-actions" v-if="track.key">
+              <button class="icon-mini success" title="Descargar" @click.stop="downloadTrack(track)">
+                <span class="material-icon tiny">download</span>
+              </button>
               <button class="icon-mini" title="Renombrar" @click.stop="renameTrack(track)">
                 <span class="material-icon tiny">edit</span>
               </button>
@@ -215,6 +219,7 @@ export default {
       currentArtwork: '',
       gifPool: GIF_POOL,
       lastGifIndex: null,
+      downloadingTrack: null,
     };
   },
   computed: {
@@ -561,11 +566,6 @@ export default {
         this.audio.volume = this.volume;
       }
     },
-    shuffleArtworks() {
-      if (this.trackActual && this.albumActual) {
-        this.currentArtwork = this.getArtworkForTrack(this.trackActual, this.albumActual);
-      }
-    },
     handleFileChange(event) {
       const file = event.target.files && event.target.files[0];
       this.pendingFile = file || null;
@@ -700,6 +700,49 @@ export default {
       const match = key.match(/\.[^/.]+$/);
       return match ? match[0] : '';
     },
+    async downloadTrack(track) {
+      if (!track?.key) {
+        return;
+      }
+      this.downloadingTrack = track.key;
+      try {
+        const response = await this.callManageApi({
+          action: 'createDownloadUrl',
+          key: track.key,
+        });
+        const link = document.createElement('a');
+        link.href = response.url;
+        const fileName = this.extractBaseName(track.key) + this.extractExtension(track.key);
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        this.managerMessage = `Descargando ${fileName}...`;
+      } catch (error) {
+        console.error('Error descargando archivo', error);
+        this.managerMessage = 'No se pudo descargar el archivo.';
+      } finally {
+        this.downloadingTrack = null;
+      }
+    },
+    async createNewFolder() {
+      const folderName = window.prompt('Nombre de la nueva carpeta:');
+      if (!folderName || !folderName.trim()) {
+        return;
+      }
+      this.managerMessage = '';
+      try {
+        await this.callManageApi({
+          action: 'createFolder',
+          folderName: folderName.trim(),
+        });
+        this.managerMessage = `Carpeta "${folderName.trim()}" creada correctamente.`;
+        await this.loadAlbums({ preserveSelection: true });
+      } catch (error) {
+        console.error('Error creando carpeta', error);
+        this.managerMessage = error.message || 'No se pudo crear la carpeta.';
+      }
+    },
   },
   async mounted() {
     await this.loadAlbums();
@@ -728,21 +771,23 @@ export default {
 
 .page {
   min-height: 100vh;
-  padding: 3rem 1.5rem;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  padding: 3rem 0;
   background: radial-gradient(circle at top, #2a2d5a, #060713 70%);
   color: #f5f5f5;
+  overflow-x: hidden;
+  position: relative;
+  width: 100%;
 }
 
 .layout {
-  width: 100%;
-  max-width: 1320px;
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
   display: grid;
-  grid-template-columns: 280px 1fr 320px;
+  grid-template-columns: 520px 1fr 580px;
   gap: 2.5rem;
   align-items: flex-start;
+  position: relative;
+  padding: 0;
 }
 
 .albums-panel,
@@ -756,6 +801,18 @@ export default {
   padding: 2rem 1.5rem;
   backdrop-filter: blur(12px);
   box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25);
+}
+
+.sidebar {
+  border-radius: 0 24px 24px 0;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+
+.tracks-panel {
+  border-radius: 24px 0 0 24px;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
 }
 
 .panel-title {
@@ -818,13 +875,20 @@ export default {
 
 .smartphone {
   position: relative;
-  width: 372px;
-  height: 760px;
-  background: linear-gradient(160deg, #090b18 0%, #1b1f35 100%);
-  border-radius: 28px;
-  padding: 12px;
-  box-shadow: 0 45px 90px rgba(5, 7, 18, 0.6);
-  border: 1px solid rgba(120, 136, 255, 0.05);
+  width: 410px;
+  height: 840px;
+  background: linear-gradient(160deg, #0a0c1a 0%, #1a1e34 50%, #0f1119 100%);
+  border-radius: 36px;
+  padding: 8px;
+  box-shadow:
+    0 0 0 2px rgba(0, 0, 0, 0.3),
+    0 0 0 4px rgba(255, 255, 255, 0.02),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.5),
+    0 20px 60px rgba(0, 0, 0, 0.8),
+    0 40px 120px rgba(0, 0, 0, 0.6),
+    0 0 200px rgba(93, 109, 255, 0.15);
+  border: 1px solid rgba(120, 136, 255, 0.08);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -832,36 +896,90 @@ export default {
   overflow: hidden;
 }
 
+.smartphone::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 40%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, transparent 100%);
+  border-radius: 36px 36px 0 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
 .smartphone::after {
   content: '';
   position: absolute;
-  inset: 1px;
-  border-radius: 26px;
-  border: 1px solid rgba(255, 255, 255, 0.03);
+  inset: 2px;
+  border-radius: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
   pointer-events: none;
+  z-index: 2;
+  box-shadow:
+    inset 0 2px 4px rgba(255, 255, 255, 0.1),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .smartphone-dynamic-island {
   width: 160px;
   height: 32px;
   border-radius: 20px;
-  background: rgba(7, 9, 18, 0.9);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
+  background: rgba(0, 0, 0, 0.95);
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.6),
+    0 0 0 0.5px rgba(255, 255, 255, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
   margin-bottom: 18px;
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(20px) saturate(180%);
+  position: relative;
+  z-index: 10;
+}
+
+.smartphone-dynamic-island::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.15) 0%, transparent 100%);
+  border-radius: 20px 20px 0 0;
+  pointer-events: none;
 }
 
 .smartphone-screen {
   flex: 1;
   width: 100%;
-  background: radial-gradient(circle at 20% 20%, rgba(65, 79, 210, 0.18), transparent 60%), rgba(8, 10, 21, 0.92);
-  border-radius: 24px;
-  padding: 2.4rem 1.25rem 2.35rem;
+  background: radial-gradient(circle at 20% 20%, rgba(65, 79, 210, 0.18), transparent 60%), rgba(8, 10, 21, 0.95);
+  border-radius: 28px;
+  padding: 2rem 1rem 1.8rem;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   overflow: hidden;
   position: relative;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05),
+    inset 0 2px 8px rgba(0, 0, 0, 0.4),
+    0 0 40px rgba(93, 109, 255, 0.1);
+  z-index: 1;
+}
+
+.smartphone-screen::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0%, transparent 50%),
+    linear-gradient(225deg, rgba(255, 255, 255, 0.02) 0%, transparent 50%);
+  border-radius: 28px;
+  pointer-events: none;
+  z-index: 1;
 }
 
 .status-overlay {
@@ -877,6 +995,7 @@ export default {
   letter-spacing: 0.08em;
   color: rgba(224, 229, 255, 0.85);
   pointer-events: none;
+  z-index: 10;
 }
 
 .status-icons {
@@ -972,11 +1091,14 @@ export default {
 
 .artwork {
   width: 100%;
-  aspect-ratio: 1;
+  aspect-ratio: 0.85;
   border-radius: 18px;
   overflow: hidden;
-  box-shadow: 0 25px 45px rgba(9, 11, 29, 0.55);
+  box-shadow:
+    0 25px 45px rgba(9, 11, 29, 0.55),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05);
   position: relative;
+  z-index: 2;
 }
 
 .artwork img {
@@ -989,20 +1111,22 @@ export default {
 .track-info {
   text-align: center;
   font-family: 'Montserrat', sans-serif;
-  margin-top: 1.35rem;
+  margin-top: 1rem;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.25rem;
+  position: relative;
+  z-index: 2;
 }
 
 .track-title {
-  font-size: 1.3rem;
+  font-size: 1.05rem;
   font-weight: 700;
   color: #f4f6ff;
 }
 
 .album-name-line {
-  font-size: 0.95rem;
+  font-size: 0.8rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: rgba(214, 219, 255, 0.75);
@@ -1017,7 +1141,9 @@ export default {
 .control-bar {
   display: flex;
   flex-direction: column;
-  gap: 1.2rem;
+  gap: 1rem;
+  position: relative;
+  z-index: 2;
 }
 
 .device-meta {
@@ -1073,16 +1199,30 @@ export default {
 }
 
 .icon-button {
-  width: 46px;
-  height: 46px;
-  font-size: 1.45rem;
+  width: 40px;
+  height: 40px;
+  font-size: 1.25rem;
 }
 
 .play-button {
-  width: 64px;
-  height: 64px;
+  width: 56px;
+  height: 56px;
   background: linear-gradient(135deg, #5d6dff, #9a79ff);
-  box-shadow: 0 12px 30px rgba(106, 126, 255, 0.35);
+  box-shadow:
+    0 8px 20px rgba(106, 126, 255, 0.4),
+    0 4px 8px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+  position: relative;
+}
+
+.play-button::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.3), transparent 70%);
+  pointer-events: none;
 }
 
 .icon-button:disabled,
@@ -1115,7 +1255,7 @@ export default {
 }
 
 .play-pause-icon {
-  font-size: 2.2rem;
+  font-size: 1.9rem;
 }
 
 .progress-row {
@@ -1166,9 +1306,13 @@ export default {
 .volume-control {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.4rem;
   flex: 1;
-  min-width: 200px;
+  min-width: 150px;
+}
+
+.volume-control .material-icon.small {
+  font-size: 1.1rem;
 }
 
 .volume-control input[type='range'] {
@@ -1179,8 +1323,13 @@ export default {
   width: 128px;
   height: 6px;
   border-radius: 20px;
-  background: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.25);
   margin-top: 18px;
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  position: relative;
+  z-index: 2;
 }
 
 .tracks-scroll {
@@ -1193,7 +1342,7 @@ export default {
 
 .track-chip {
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto 1fr auto auto;
   gap: 0.85rem;
   padding: 0.75rem 1rem;
   align-items: center;
@@ -1287,6 +1436,11 @@ export default {
   color: #ff7b96;
 }
 
+.icon-mini.success {
+  background: rgba(99, 255, 132, 0.2);
+  color: #7bff96;
+}
+
 .manager-panel {
   margin-top: 2rem;
   padding: 1.25rem;
@@ -1347,6 +1501,13 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
 }
 
 .sidebar-title {
@@ -1525,6 +1686,16 @@ export default {
     align-items: stretch;
   }
 
+  .sidebar {
+    border-radius: 0;
+    padding-left: 1.5rem;
+  }
+
+  .tracks-panel {
+    border-radius: 0;
+    padding-right: 1.5rem;
+  }
+
   .albums-panel {
     width: 100%;
     max-width: 640px;
@@ -1539,7 +1710,7 @@ export default {
 
 @media (max-width: 640px) {
   .page {
-    padding: 2rem 1rem;
+    padding: 2rem 0;
   }
 
   .layout {
@@ -1548,6 +1719,11 @@ export default {
 
   .sidebar {
     padding: 1.5rem;
+    padding-left: 1.5rem;
+  }
+
+  .tracks-panel {
+    padding-right: 1.5rem;
   }
 
   .smartphone {
